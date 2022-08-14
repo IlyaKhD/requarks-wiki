@@ -117,16 +117,7 @@ export default {
         this.loadFromCurrentPath()
       }
     },
-    async fetchBrowseItems (item) {
-      this.$store.commit(`loadingStart`, 'browse-load')
-      if (!item) {
-        item = this.currentParent
-      }
-
-      if (this.loadedCache.indexOf(item.id) < 0) {
-        this.currentItems = []
-      }
-
+    async setBrowseItem (item) {
       if (item.id === 0) {
         this.parents = []
       } else {
@@ -139,8 +130,6 @@ export default {
         }
         this.parents.push(item)
       }
-
-      this.currentParent = item
 
       const resp = await this.$apollo.query({
         query: gql`
@@ -164,8 +153,22 @@ export default {
           locale: this.locale
         }
       })
-      this.loadedCache = _.union(this.loadedCache, [item.id])
+      this.currentParent = item
       this.currentItems = _.get(resp, 'data.pages.tree', [])
+    },
+    async fetchBrowseItems (item) {
+      this.$store.commit(`loadingStart`, 'browse-load')
+      if (!item) {
+        item = this.currentParent
+      }
+
+      if (this.loadedCache.indexOf(item.id) < 0) {
+        this.currentItems = []
+      }
+
+      await this.setBrowseItem(item);
+
+      this.loadedCache = _.union(this.loadedCache, [item.id])
       this.$store.commit(`loadingStop`, 'browse-load')
     },
     async loadFromCurrentPath() {
@@ -211,10 +214,15 @@ export default {
       }
 
       this.parents = [this.currentParent, ...invertedAncestors.reverse()]
-      this.currentParent = _.last(this.parents)
-
       this.loadedCache = [curPage.parent]
-      this.currentItems = _.filter(items, ['parent', curPage.parent])
+
+      if (curPage.isFolder) {
+        await this.setBrowseItem(curPage)
+      } else {
+        this.currentParent = _.last(this.parents)
+        this.currentItems = _.filter(items, ['parent', curPage.parent])
+      }
+
       this.$store.commit(`loadingStop`, 'browse-load')
     },
     goHome () {

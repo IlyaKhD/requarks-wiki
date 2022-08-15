@@ -1,5 +1,29 @@
 <template lang='pug'>
   v-app-bar.nav-header(color='black', dark, app, :clipped-left='!$vuetify.rtl', :clipped-right='$vuetify.rtl', fixed, flat, :extended='searchIsShown && $vuetify.breakpoint.smAndDown')
+
+    v-dialog(
+      :input-value='true'
+      persistent
+      max-width="290"
+    )
+
+      v-card
+        v-card-title class="text-h5"
+          Use Google's location service?
+        v-card-text Let Google help apps determine location. This means sending anonymous location data to Google, even when no apps are running.
+        v-card-actions
+          v-spacer
+          v-btn(
+            color="green darken-1"
+            text
+          )
+            Disagree
+          v-btn(
+            color="green darken-1"
+            text
+          )
+            Agree
+
     v-toolbar(color='deep-purple', flat, slot='extension', v-if='searchIsShown && $vuetify.breakpoint.smAndDown')
       v-text-field(
         ref='searchFieldMobile'
@@ -242,6 +266,24 @@
     page-delete(v-model='deletePageModal', v-if='path && path.length')
     page-convert(v-model='convertPageModal', v-if='path && path.length')
 
+    v-dialog(
+      v-model='movePageContentModal'
+      max-width='550'
+      persistent
+      overlay-opacity='.7'
+      )
+      v-card
+        .dialog-header.is-short
+          span Move/Rename Page
+
+        v-card-text.pt-5
+          div Move folder content recursively?
+
+        v-card-chin
+          v-spacer
+          v-btn(depressed, @click='pageSingleMoveRename') Skip
+          v-btn.px-3(depressed, color='primary', @click='pageRecursiveMoveRename') Move content
+
     .nav-header-dev(v-if='isDevMode')
       v-icon mdi-alert
       div
@@ -254,6 +296,7 @@ import { get, sync } from 'vuex-pathify'
 import _ from 'lodash'
 
 import movePageMutation from 'gql/common/common-pages-mutation-move.gql'
+import pagesQuery from 'gql/admin/pages/pages-query-list.gql'
 
 /* global siteConfig, siteLangs */
 
@@ -279,6 +322,7 @@ export default {
       searchAdvMenuShown: false,
       newPageModal: false,
       movePageModal: false,
+      movePageContentModal: false,
       convertPageModal: false,
       deletePageModal: false,
       locales: siteLangs,
@@ -428,29 +472,86 @@ export default {
     pageConvert () {
       this.convertPageModal = true
     },
-    pageMove () {
+    async pageMove () {
       this.movePageModal = true
     },
     async pageMoveRename ({ path, locale }) {
+      this.movedPagePath = path;
+      this.movedPageLocale = locale;
+
       this.$store.commit(`loadingStart`, 'page-move')
+
       try {
-        const resp = await this.$apollo.mutate({
-          mutation: movePageMutation,
-          variables: {
-            id: this.$store.get('page/id'),
-            destinationLocale: locale,
-            destinationPath: path
-          }
+        const resp = await this.$apollo.query({
+          query: pagesQuery,
+          fetchPolicy: 'network-only'
         })
-        if (_.get(resp, 'data.pages.move.responseResult.succeeded', false)) {
-          window.location.replace(`/${locale}/${path}`)
+        const pathFilter = new RegExp(`^${this.$store.get('page/path')}.*`);
+        const children  = _.get(resp, 'data.pages.list', []).filter(
+            page => pathFilter.test(page.path) && page.path != this.$store.get('page/path')
+        ).map((p => _.pick(p, ['id', 'locale', 'path'])))
+
+        if(children.length > 0) {
+          this.movedPageChildren = children
+          this.movePageContentModal = true
         } else {
-          throw new Error(_.get(resp, 'data.pages.move.responseResult.message', this.$t('common:error.unexpected')))
+          this.movePage({ recursive: false })
         }
+      } catch {
+        this.movePage({ recursive: false });
+      } finally {
+        this.$store.commit(`loadingStop`, 'page-move')
+      }
+    },
+    async pageRecursiveMoveRename () {
+      this.movePageContentModal = false
+      this.movePage({ recursive: true });
+    },
+    async pageSingleMoveRename () {
+      this.movePageContentModal = false
+      this.movePage({ recursive: false });
+    },
+    async movePage ({ recursive }) {
+      try {
+        this.$store.commit(`loadingStart`, 'page-move')
+        const totalCount = recursive ? this.movedPageChildren.length + 1 : 1;
+        let counter = 1;
+        const curPageId = this.$store.get('page/id');
+        const curPagePath = this.$store.get('page/path')
+
+        const move = async (id, path, destinationLocale) => {
+            const destinationPath = `${this.movedPagePath}${path.substring(curPagePath.length)}`;
+            console.log(`Moving page ${counter}/${totalCount} #${id} from ${path} to ${destinationPath}`);
+            counter += 1;
+
+            const resp = await this.$apollo.mutate({
+              mutation: movePageMutation,
+              variables: {
+                id,
+                destinationLocale,
+                destinationPath
+              }
+            })
+            if (!_.get(resp, 'data.pages.move.responseResult.succeeded', false)) {
+              throw new Error(_.get(resp, 'data.pages.move.responseResult.message', this.$t('common:error.unexpected')))
+            }
+        }
+
+        await move(curPageId, curPagePath, this.movedPageLocale);
+
+        if(recursive) {
+          for (const page of this.movedPageChildren) {
+            await move(page.id, page.path, page.locale);
+          }
+        }
+
+        this.$store.commit(`loadingStop`, 'page-move')
+        window.location.replace(`/${this.movedPageLocale}/${this.movedPagePath}`)
       } catch (err) {
         this.$store.commit('pushGraphError', err)
         this.$store.commit(`loadingStop`, 'page-move')
       }
+
     },
     pageDelete () {
       this.deletePageModal = true

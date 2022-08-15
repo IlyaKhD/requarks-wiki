@@ -678,9 +678,27 @@ export default {
     },
     insertLinkHandler ({ locale, path }) {
       const lastPart = _.last(path.split('/'))
-      this.insertAtCursor({
-        content: siteLangs.length > 0 ? `[${lastPart}](/${locale}/${path})` : `[${lastPart}](/${path})`
-      })
+      const linkText = lastPart.split('-').map(_.capitalize).join(' ')
+      const url = siteLangs.length > 0 ? `/${locale}/${path}` : `/${path}`
+
+      const that = this;
+      fetch(url, {})
+          .then(function (response) {
+              return response.text();
+          })
+          .then(function (body) {
+              const idPattern = ':page-id=';
+              const startIdIndex = body.indexOf(idPattern) + idPattern.length + 1;
+              const endIdIndex = body.indexOf('"', startIdIndex);
+              const id = body.substring(startIdIndex, endIdIndex);
+
+              if(isNaN(id)) {
+                  alert('cannot resolve url');
+                  that.insertAtCursor({ content: `[${linkText}](${url})` });
+              } else {
+                  that.insertAtCursor({ content: `[${linkText}](/i/${id})` });
+              }
+          });
     },
     processMarkers (from, to) {
       let found = null

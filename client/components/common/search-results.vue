@@ -18,13 +18,14 @@
         v-subheader.white--text {{$t('common:header.searchResultsCount', { total: response.totalHits })}}
         v-list.search-results-items.radius-7.py-0(two-line, dense)
           template(v-for='(item, idx) of results')
-            v-list-item(@click='goToPage(item)', @click.middle="goToPageInNewTab(item)", :key='item.id', :class='idx === cursor ? `highlighted` : ``')
+            v-list-item(:key='item.id', :class='idx === cursor ? `highlighted` : ``')
               v-list-item-avatar(tile)
                 img(src='/_assets/svg/icon-selective-highlighting.svg')
               v-list-item-content
                 v-list-item-title(v-text='item.title')
                 v-list-item-subtitle.caption(v-text='item.description')
-                .caption.grey--text(v-text='item.path')
+                .caption.grey--text
+                  a(:href='`/${item.locale}/${item.path}`') /{{item.path}}
               v-list-item-action
                 v-chip(label, outlined) {{item.locale.toUpperCase()}}
             v-divider(v-if='idx < results.length - 1')

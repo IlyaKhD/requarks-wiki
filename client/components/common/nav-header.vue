@@ -486,7 +486,7 @@ export default {
           query: pagesQuery,
           fetchPolicy: 'network-only'
         })
-        const pathFilter = new RegExp(`^${this.$store.get('page/path')}.*`);
+        const pathFilter = new RegExp(`^${this.$store.get('page/path')}/.*`);
         const children  = _.get(resp, 'data.pages.list', []).filter(
             page => pathFilter.test(page.path) && page.path != this.$store.get('page/path')
         ).map((p => _.pick(p, ['id', 'locale', 'path'])))

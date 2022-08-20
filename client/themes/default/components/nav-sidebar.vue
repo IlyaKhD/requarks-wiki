@@ -18,7 +18,7 @@
         @click='switchMode(`custom`)'
         )
         v-icon(left) mdi-pin
-        .body-2.text-none Pinned Pages
+        .body-2.text-none Show Pinned Pages
     v-divider
     //-> Custom Navigation
     v-list.py-2(v-if='currentMode === `custom`', dense, :class='color', :dark='dark')

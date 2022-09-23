@@ -59,7 +59,9 @@
             :class='$vuetify.rtl ? `pr-4` : `pl-4`'
             )
             .page-header-headings
-              .headline.grey--text(:class='$vuetify.theme.dark ? `text--lighten-2` : `text--darken-3`') {{title}}
+              .headline.grey--text(:class='$vuetify.theme.dark ? `text--lighten-2` : `text--darken-3`')
+                v-icon.mr-2(@click='copyPageLink') mdi-vector-link
+                span {{title}}
               .caption.grey--text.text--darken-1 {{description}}
             .page-edit-shortcuts(
               v-if='editShortcutsObj.editMenuBar'
@@ -644,6 +646,12 @@ export default {
         }
       })
 
+      this.$refs.container.querySelectorAll('button[data-header-slug]').forEach(el => {
+        el.onclick = ev => {
+          this.copyPermanentLink({target: el, headerSlug: el.dataset.headerSlug});
+        }
+      })
+
       window.boot.notify('page-ready')
     })
   },
@@ -702,6 +710,25 @@ export default {
       this.$vuetify.goTo('#discussion', this.scrollOpts)
       if (focusNewComment) {
         document.querySelector('#discussion-new').focus()
+      }
+    },
+    copyPageLink ({target}) {
+      this.copyPermanentLink({target});
+    },
+    copyPermanentLink ({target, headerSlug}) {
+      const link = `${location.origin}/i/${this.pageId}${headerSlug ? `#${headerSlug}`: ''}`;
+      if (window.isSecureContext) {
+        try {
+          navigator.clipboard.writeText(link);
+          target.classList.add('link-button-feedback');
+          setTimeout(() => {
+            target.classList.remove('link-button-feedback');
+          }, 1000)
+        } catch {
+          alert(`Failed to copy to clipboard. Permanent link: ${link}`);
+        }
+      } else {
+        alert(`Permanent link: ${link}`);
       }
     }
   }

@@ -228,6 +228,7 @@ module.exports = {
 
       // -> Add anchor
       $(elm).attr('id', headerSlug).addClass('toc-header')
+      $(elm).prepend(`<button type="button" style="font-size: inherit" data-header-slug="${headerSlug}" class="v-icon notranslate mr-2 v-icon--link mdi mdi-vector-link"></button>`)
       $(elm).prepend(`<a class="toc-anchor" href="#${headerSlug}">&#xB6;</a> `)
 
       headers.push(headerSlug)

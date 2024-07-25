@@ -128,7 +128,6 @@
                 lg='6'
                 )
                 v-card.radius-7(
-                  @click='goTo(item)'
                   style='height:100%;'
                   :class='$vuetify.theme.dark ? `grey darken-4` : ``'
                   )
@@ -142,7 +141,7 @@
                     v-divider.my-2
                     .d-flex.flex-row.align-center
                       v-chip(small, label, :color='$vuetify.theme.dark ? `grey darken-3-l5` : `grey lighten-4`').overline {{item.locale}}
-                      .caption.ml-1 / {{item.path}}
+                      a(:href='`/${item.locale}/${item.path}`').caption.ml-1 /{{item.path}}
         .text-center.py-2.animated.fadeInDown(v-if='this.pageTotal > 1')
           v-pagination(v-model='pagination.page', :length='pageTotal')
 

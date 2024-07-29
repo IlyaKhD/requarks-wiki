@@ -716,7 +716,7 @@ export default {
       this.copyPermanentLink({target});
     },
     copyPermanentLink ({target, headerSlug}) {
-      const link = `${location.origin}/i/${this.pageId}${headerSlug ? `#${headerSlug}`: ''}`;
+      const link = `${location.origin}/i/${this.pageId}?p=${this.path}${headerSlug ? `#${headerSlug}`: ''}`;
       if (window.isSecureContext) {
         try {
           navigator.clipboard.writeText(link);
